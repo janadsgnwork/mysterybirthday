@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Heat Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            background: transparent;
+            background-image: url('https://i.imgur.com/xpzp7vQ.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+        }
+
+        .game-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .game-header img {
+            max-width: 300px;
+            height: auto;
+        }
+
+        .subtitle {
+            margin-top: 15px;
+            font-size: 1.2rem;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 15px;
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .card {
+            aspect-ratio: 1;
+            cursor: pointer;
+            perspective: 1000px;
+        }
+
+        .card.locked {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            border-radius: 10px;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid;
+        }
+
+        .card-front {
+            background: #1e3a8a;
+            color: white;
+            border-color: #1e40af;
+        }
+
+        .card-front img {
+            width: 40px;
+            height: 40px;
+            filter: brightness(0) invert(1);
+        }
+
+        .card-back {
+            background: #fbbf24;
+            color: #1f2937;
+            border-color: #f59e0b;
+            transform: rotateY(180deg);
+        }
+
+        .card-back .card-icon {
+            width: 48px;
+            height: 48px;
+        }
+
+        .card:hover .card-inner {
+            transform: scale(1.05);
+        }
+
+        .card.flipped:hover .card-inner {
+            transform: rotateY(180deg) scale(1.05);
+        }
+
+        .card.locked:hover .card-inner {
+            transform: none;
+        }
+
+        .questionBox {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 30px;
+            color: #fff;
+            z-index: 1000;
+        }
+
+        .questionBox h2 {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .answers {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+            max-width: 600px;
+        }
+
+        button {
+            background: #fff;
+            color: #1f2937;
+            border: none;
+            border-radius: 8px;
+            padding: 15px 25px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: Helvetica, Arial, sans-serif;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #fbbf24;
+            transform: scale(1.05);
+        }
+
+        #feedback {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        #final {
+            display: none;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            .game-header img {
+                max-width: 250px;
+            }
+            
+            .cards-grid {
+                max-width: 350px;
+                gap: 12px;
+            }
+            
+            .card-front, .card-back {
+                font-size: 1.2rem;
+            }
+            
+            .questionBox h2 {
+                font-size: 1.2rem;
+            }
+            
+            .answers {
+                grid-template-columns: 1fr;
+                max-width: 300px;
+            }
+            
+            button {
+                padding: 12px 20px;
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .cards-grid {
+                max-width: 300px;
+                gap: 10px;
+            }
+            
+            .card-front, .card-back {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-header">
+        <img src="https://i.imgur.com/k5l6ABX.png" alt="Game Title">
+        <p class="subtitle">Unlock all 12 mystery cards by answering correctly!</p>
+    </div>
+    
+    <div class="cards-grid" id="grid"></div>
+
+    <div id="questionBox" class="questionBox">
+        <h2 id="qText"></h2>
+        <div id="answers" class="answers"></div>
+        <p id="feedback"></p>
+    </div>
+
+    <div id="final">
+        <p class="subtitle">Good work, chef! Looks like you're a pro!</p>
+        <p class="subtitle">Now open your BIRTHDAY MYSTERY BOX</p>
+    </div>
+
+    <script>
+        const questions = [
+            {q:"Do you like cooking?", a:["Yes","No"], correct:0},
+            {q:"What burns the brightest in the kitchen (and in life)?", a:["Chili flakes","The stove","Passion","Garlic in a hot pan"], correct:2},
+            {q:"How do chefs make sure their food is cooked to the perfect temperature?", a:["Smoke detector","Cooking thermometer","Timer","Oven light"], correct:1},
+            {q:"What kitchen tool helps you use just the right amount of oil while cooking, keeping dishes healthy and making you feel like a pro?", a:["Whisk","Salt shaker","Oil sprayer","Measuring cup"], correct:2},
+            {q:"Which sweet treat is made primarily from ground almonds and sugar?", a:["Cake","Marzipan","Brownie","Cookie"], correct:1},
+            {q:"Who or what is the hottest ingredient in your kitchen?", a:["You","Me","Chili flakes","Oven"], correct:[0,1]},
+            {q:"What salty snack is a perfect match for beer during a late-night movie?", a:["Popcorn","Pretzels","Salted cashews","Potato chips"], correct:2},
+            {q:"What's the little thing that makes every dish and every day better?", a:["A hug","Salt","Butter","Chocolate"], correct:0},
+            {q:"What key ingredient was missing from your last chili adventure?", a:["Cinnamon","Onion powder","Garlic salt","Paprika"], correct:1},
+            {q:"What burns the brightest in the kitchen (and in life)?", a:["Chili flakes","The stove","Passion","Garlic in a hot pan"], correct:2},
+            {q:"What's the secret gadget that only true kitchen pros rely on?", a:["Apron","Measuring cup","Wooden spoon","Cooking thermometer"], correct:3},
+            {q:"Who adds the most flavor to my life?", a:["Me","You","BBQ sauce","Chai latte"], correct:1}
+        ];
+
+        let unlocked = 1;
+        let answered = 0; // number of correctly answered questions
+        const grid = document.getElementById('grid');
+        const questionBox = document.getElementById('questionBox');
+        const qText = document.getElementById('qText');
+        const answersDiv = document.getElementById('answers');
+        const feedback = document.getElementById('feedback');
+
+        // Back-side images for cards 1..12 (indexes 0..11). Use null to keep number.
+        const backImages = [
+            'https://cdn-icons-png.flaticon.com/128/14708/14708525.png', // 1 -> Do you like cooking?
+            'https://cdn-icons-png.flaticon.com/512/14738/14738762.png', // 2 -> What burns the brightest?
+            'https://cdn-icons-png.flaticon.com/512/14708/14708593.png', // 3 -> How do chefs make sure...
+            'https://cdn-icons-png.flaticon.com/512/14708/14708729.png', // 4 -> What kitchen tool helps...
+            'https://cdn-icons-png.flaticon.com/512/14706/14706765.png', // 5 -> Which sweet treat...
+            'https://cdn-icons-png.flaticon.com/512/14738/14738859.png', // 6 -> Who or what is the hottest...
+            'https://cdn-icons-png.flaticon.com/512/14707/14707382.png', // 7 -> What salty snack...
+            'https://cdn-icons-png.flaticon.com/512/14738/14738685.png', // 8 -> What's the little thing...
+            'https://cdn-icons-png.flaticon.com/128/14708/14708215.png', // 9 -> What key ingredient was missing...
+            'https://cdn-icons-png.flaticon.com/512/14738/14738762.png', // 10 -> What burns the brightest? (duplicate)
+            'https://cdn-icons-png.flaticon.com/512/14708/14708387.png', // 11 -> What's the secret gadget...
+            'https://cdn-icons-png.flaticon.com/512/14738/14738678.png'  // 12 -> Who adds the most flavor...
+        ];
+
+        function createGrid() {
+            for (let i = 0; i < 12; i++) {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                // Only lock the last card (index 11)
+                if (i === 11) card.classList.add('locked');
+                
+                const cardInner = document.createElement('div');
+                cardInner.classList.add('card-inner');
+                
+                const cardFront = document.createElement('div');
+                cardFront.classList.add('card-front');
+                const iconImg = document.createElement('img');
+                iconImg.src = 'https://static.thenounproject.com/png/4020631-200.png';
+                iconImg.alt = 'Lock Icon';
+                cardFront.appendChild(iconImg);
+                
+                const cardBack = document.createElement('div');
+                cardBack.classList.add('card-back');
+                if (backImages[i]) {
+                    cardBack.innerHTML = '<img class="card-icon" src="' + backImages[i] + '" alt="Card Icon">';
+                } else {
+                    cardBack.innerHTML = i + 1;
+                }
+                
+                cardInner.appendChild(cardFront);
+                cardInner.appendChild(cardBack);
+                card.appendChild(cardInner);
+                
+                card.onclick = () => openCard(i);
+                grid.appendChild(card);
+            }
+        }
+
+        function openCard(i) {
+            if (i === 11 && unlocked < 11) return; // Card 12 is locked until 11 questions answered
+            showQuestion(i);
+        }
+
+        function showQuestion(index) {
+            const q = questions[index];
+            questionBox.style.display = 'flex';
+            qText.innerText = q.q;
+            answersDiv.innerHTML = '';
+            feedback.innerText = '';
+
+            q.a.forEach((ans, i) => {
+                const btn = document.createElement('button');
+                btn.innerText = ans;
+                btn.onclick = () => checkAnswer(index, i);
+                answersDiv.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(index, choice) {
+            const q = questions[index];
+            let isCorrect = false;
+            
+            // Handle multiple correct answers (for Q8)
+            if (Array.isArray(q.correct)) {
+                isCorrect = q.correct.includes(choice);
+            } else {
+                isCorrect = choice === q.correct;
+            }
+            
+            if (isCorrect) {
+                feedback.innerText = "✅ Correct!";
+                setTimeout(() => {
+                    const cards = document.querySelectorAll('.card');
+                    if (cards[index]) {
+                        cards[index].classList.add('flipped');
+                    }
+                    questionBox.style.display = 'none';
+                    unlocked++;
+                    answered++;
+                    updateGrid();
+                    if (answered >= 12) {
+                        document.getElementById("final").style.display = "block";
+                    }
+                }, 700);
+            } else {
+                feedback.innerText = "❌ Try again!";
+            }
+        }
+
+        function updateGrid() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((c, i) => {
+                // Only unlock Card 12 (index 11) when 11 questions are answered
+                if (i === 11 && unlocked >= 11) {
+                    c.classList.remove('locked');
+                }
+            });
+        }
+
+        createGrid();
+    </script>
+</body>
+</html>
